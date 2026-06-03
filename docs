@@ -1,0 +1,423 @@
+# E-Commerce Product Store — Implementation Plan
+
+## 1. Tech Stack
+
+| Layer | Choice | Rationale |
+|-------|--------|-----------|
+| Framework | Next.js 16 (App Router) | SSR, SEO, file-based routing, API routes |
+| Language | TypeScript 5 (strict) | Type safety, strict mode |
+| UI Library | Ant Design 6 | Production-grade, built-in RTL + dark mode support |
+| Styling | Tailwind CSS v4 | Utility-first, RTL variants (`rtl:`, `ltr:`) |
+| Server State | @tanstack/react-query v5 | Caching, dedup, infinite scroll |
+| Client State | Redux Toolkit | Auth session + theme preference |
+| Auth | JWT in httpOnly cookies | XSS-safe, CSRF mitigated via SameSite |
+| i18n | next-intl | Cookie-based locale (not URL prefix), RTL support |
+| Theme | Ant Design theme tokens + Tailwind `dark:` | System toggle + persist in cookie |
+| Infinite Scroll | IntersectionObserver + useInfiniteQuery | Standard performant pattern |
+| HTTP Client | Axios with interceptors | Auto cookie forwarding |
+| API | FakeStoreAPI + custom Next.js API routes | Auth via our own API, products via FakeStoreAPI |
+| **Tooling** | | |
+| Formatter | Prettier 3 + prettier-plugin-tailwindcss | Consistent style |
+| Linter | ESLint 9 (flat config) + next/core-web-vitals | Catch bugs early |
+| Hooks | Husky 9 + lint-staged | Pre-commit quality gate |
+| Editor | EditorConfig | Cross-IDE consistency |
+
+---
+
+## 2. i18n Architecture (Cookie-based)
+
+```
+User clicks language switcher
+        │
+        ▼
+Client: set cookie `locale=en|ar` + update Redux
+        │
+        ▼
+Next.js Middleware: reads `locale` cookie → sets `request.locale` for next-intl
+        │
+        ▼
+next-intl: serves correct messages from `messages/en.json` or `messages/ar.json`
+        │
+        ▼
+Ant Design: ConfigProvider reads direction from locale → `direction: 'rtl'` for ar
+        │
+        ▼
+Tailwind: `rtl:` prefix for mirrored styles (margins, paddings, transforms)
+```
+
+### Key decisions:
+- **No URL prefix** — `/products/1` not `/en/products/1` or `/ar/products/1`
+- **Locale cookie** — persists across sessions, read by middleware
+- **Direction state** — derived from locale in Redux, used by Ant Design `ConfigProvider`
+- **Translation files** — `messages/en.json` and `messages/ar.json`
+- **next-intl middleware** — configured to read from cookie, not pathname
+
+---
+
+## 3. Dark/Light Mode Architecture
+
+```
+User toggles theme
+        │
+        ▼
+Client: set cookie `theme=dark|light` + update Redux
+        │
+        ▼
+Ant Design ConfigProvider: `theme.algorithm = theme.darkAlgorithm | theme.defaultAlgorithm`
+        │
+        ▼
+Tailwind: `dark:` variants via `class` strategy (Ant Design adds `dark` class to `<html>`)
+```
+
+### How they coexist:
+
+| Concern | Mechanism |
+|---------|-----------|
+| Locale + direction | `next-intl` reads cookie → Redux `locale` → AntD `direction` |
+| Theme | Cookie → Redux `theme` → AntD `algorithm` + Tailwind `dark:` |
+| Persistence | Both locale and theme stored in cookies (server-readable) |
+| Hydration | Cookie read in middleware, passed to layout to prevent flash |
+
+---
+
+## 4. Direction-Aware Styling Strategy
+
+### Ant Design components
+Ant Design handles RTL internally via `ConfigProvider direction="rtl"`. No extra work.
+
+### Custom Tailwind styles
+Use Tailwind's RTL variants for layout:
+
+```tsx
+<div className="flex gap-2 rtl:space-x-reverse">
+  <span className="ml-2 rtl:mr-2 rtl:ml-0">Text</span>
+</div>
+```
+
+Or CSS logical properties (preferred for new code):
+```css
+margin-inline-start: 0.5rem;
+padding-inline-end: 1rem;
+```
+
+### Grid & flex
+Ant Design's Row/Col and Flex components auto-flip in RTL. Tailwind grid remains symmetric (no change needed unless explicit left/right).
+
+---
+
+## 5. Project Structure
+
+```
+e-commerce-app/
+├── .husky/
+│   ├── _
+│   │   └── husky.sh
+│   └── pre-commit              # runs lint-staged
+├── .vscode/
+│   └── settings.json
+├── docs/
+│   └── PLAN.md
+├── messages/
+│   ├── en.json                 # English translations
+│   └── ar.json                 # Arabic translations
+├── public/
+│   └── favicon.ico
+├── src/
+│   ├── app/
+│   │   ├── [locale]/           # ← NO! Cookie-based, no [locale] segment
+│   │   ├── api/
+│   │   │   └── auth/
+│   │   │       ├── register/route.ts
+│   │   │       ├── login/route.ts
+│   │   │       └── me/route.ts
+│   │   ├── product/
+│   │   │   └── [id]/
+│   │   │       └── page.tsx
+│   │   ├── login/
+│   │   │   └── page.tsx
+│   │   ├── register/
+│   │   │   └── page.tsx
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   ├── page.tsx             # Home — product list
+│   │   ├── loading.tsx
+│   │   └── error.tsx
+│   ├── components/
+│   │   ├── providers/
+│   │   │   ├── AppProvider.tsx   # Redux + Query + AntD ConfigProvider combined
+│   │   │   ├── QueryProvider.tsx
+│   │   │   └── ReduxProvider.tsx
+│   │   ├── layout/
+│   │   │   ├── Navbar.tsx
+│   │   │   ├── Footer.tsx
+│   │   │   ├── LanguageSwitcher.tsx
+│   │   │   └── ThemeSwitcher.tsx
+│   │   ├── product/
+│   │   │   ├── ProductCard.tsx
+│   │   │   ├── ProductGrid.tsx
+│   │   │   └── ProductDetails.tsx
+│   │   ├── ui/
+│   │   │   ├── SearchBar.tsx
+│   │   │   ├── CategoryFilter.tsx
+│   │   │   ├── InfiniteScrollObserver.tsx
+│   │   │   ├── LoadingSpinner.tsx
+│   │   │   └── ErrorFallback.tsx
+│   │   └── auth/
+│   │       ├── AuthGuard.tsx
+│   │       └── AuthForm.tsx
+│   ├── hooks/
+│   │   ├── useProducts.ts
+│   │   ├── useProduct.ts
+│   │   ├── useAuth.ts
+│   │   └── useDebounce.ts
+│   ├── lib/
+│   │   ├── api-client.ts        # Axios instance
+│   │   ├── fake-store.ts        # FakeStoreAPI calls
+│   │   └── jwt.ts               # JWT helpers (server-side)
+│   ├── store/
+│   │   ├── index.ts
+│   │   └── slices/
+│   │       ├── authSlice.ts
+│   │       └── appSlice.ts      # locale + theme
+│   ├── types/
+│   │   ├── product.ts
+│   │   └── auth.ts
+│   ├── config/
+│   │   └── constants.ts
+│   └── middleware.ts
+├── i18n/
+│   └── request.ts
+├── .editorconfig
+├── .env.local                   # JWT_SECRET
+├── .env.example
+├── .gitignore
+├── .lintstagedrc
+├── .prettierrc
+├── eslint.config.mjs
+├── next.config.ts
+├── package.json
+├── postcss.config.mjs
+├── tailwind.config.ts
+└── tsconfig.json
+```
+
+---
+
+## 6. Data Flow Architecture
+
+```
+                    ┌──────────────────┐
+                    │   FakeStoreAPI   │
+                    │  (products data) │
+                    └────────┬─────────┘
+                             │
+                    ┌────────▼─────────┐
+                    │   Axios Client    │
+                    └────────┬─────────┘
+                             │
+         ┌───────────────────┼────────────────────┐
+         │                   │                    │
+    ┌────▼─────┐      ┌─────▼──────┐      ┌──────▼──────┐
+    │ React Query│     │  Redux     │      │ Next.js API │
+    │ (products) │     │ ┌ auth     │      │ Routes (JWT)│
+    │ (categories)│    │ ├ locale   │      └──────┬──────┘
+    └────┬───────┘     │ └ theme    │             │
+         │             └─────┬──────┘             │
+         │                   │                    │
+         └───────────────────┼────────────────────┘
+                             │
+                    ┌────────▼────────┐
+                    │   React App     │
+                    │ (Ant Design +   │
+                    │  Tailwind + RTL)│
+                    └─────────────────┘
+```
+
+---
+
+## 7. Component Tree
+
+```
+<RootLayout>
+  <AppProvider>               ← Redux + Query + AntD ConfigProvider
+    <AntdConfigProvider       ← direction: rtl|ltr, algorithm: dark|light
+      direction={locale === 'ar' ? 'rtl' : 'ltr'}
+      theme={{ algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm }}
+    >
+      <Navbar>
+        <LanguageSwitcher />   ← toggles en/ar, updates cookie + Redux
+        <ThemeSwitcher />      ← toggles dark/light, updates cookie + Redux
+        <AuthStatus />         ← login/logout from Redux
+      </Navbar>
+
+      {/* Home Page */}
+      <ProductGrid>            ← 'use client'
+        <SearchBar />          ← debounced, updates URL params
+        <CategoryFilter />     ← Tag-based selection
+        <InfiniteScrollObserver />
+        <div.grid>
+          <ProductCard />      ← React.memo
+          <ProductCard />
+          ...
+        </div.grid>
+      </ProductGrid>
+
+      {/* Product Detail Page */}
+      <ProductDetails />       ← 'use client', useQuery
+
+      {/* Auth Pages */}
+      <AuthForm />             ← login/register shared
+
+      <Footer />
+    </AntdConfigProvider>
+  </AppProvider>
+</RootLayout>
+```
+
+---
+
+## 8. Route Design
+
+| Route | Type | Auth | Locale-aware | Description |
+|-------|------|------|-------------|-------------|
+| `/` | Page | No | Yes | Product list with filters, infinite scroll |
+| `/product/[id]` | Page (SSR) | No | Yes | Product details with dynamic metadata |
+| `/login` | Page | No | Yes | Login form |
+| `/register` | Page | No | Yes | Registration form |
+| `/api/auth/register` | POST | No | No | Create user, set JWT cookie |
+| `/api/auth/login` | POST | No | No | Verify credentials, set JWT cookie |
+| `/api/auth/me` | GET | Yes | No | Return current user from cookie |
+
+**No `[locale]` segment in URL.** Locale from cookie only.
+
+---
+
+## 9. Implementation Phases
+
+### Phase 0: Project Scaffolding + Tooling
+- [ ] Initialize Next.js 16 with TypeScript
+- [ ] Configure Tailwind CSS v4 + PostCSS
+- [ ] Install Ant Design 6 + @ant-design/nextjs-registry
+- [ ] Install Redux Toolkit + React Query
+- [ ] Install next-intl + configure cookie-based i18n
+- [ ] Set up Prettier + ESLint + EditorConfig
+- [ ] Set up Husky + lint-staged
+- [ ] Create `.env.example`, `.gitignore`
+- [ ] Create folder structure
+
+### Phase 1: Types & Config
+- [ ] Define `Product`, `Category`, `User`, `AuthResponse` types
+- [ ] Define constants (`PRODUCTS_PER_PAGE`, `API_BASE_URL`, `STALE_TIME`)
+
+### Phase 2: i18n + Theme Foundation
+- [ ] Create messages (en.json, ar.json)
+- [ ] Configure next-intl request.ts
+- [ ] Create Redux `appSlice` (locale + theme)
+- [ ] Create `AppProvider` wrapping Redux + Query + AntD ConfigProvider
+- [ ] Create LanguageSwitcher component
+- [ ] Create ThemeSwitcher component
+- [ ] Set up middleware for locale cookie
+- [ ] Test: RTL + dark mode toggle works
+
+### Phase 3: Auth System
+- [ ] Create JWT helpers (`src/lib/jwt.ts`)
+- [ ] Create auth API routes (register, login, me)
+- [ ] Create Redux auth slice
+- [ ] Create `useAuth` hook
+- [ ] Create `AuthGuard` component
+- [ ] Create `AuthForm` component
+- [ ] Create login/register pages
+
+### Phase 4: Product List + Infinite Scroll
+- [ ] Create Axios instance with interceptors
+- [ ] Create FakeStoreAPI client functions
+- [ ] Create `useProducts` hook (useInfiniteQuery)
+- [ ] Create `ProductCard` (React.memo)
+- [ ] Create `InfiniteScrollObserver`
+- [ ] Create `ProductGrid` (orchestrator with filters)
+- [ ] Build home page
+
+### Phase 5: Search & Category Filters
+- [ ] Create `SearchBar` (Input.Search, debounced)
+- [ ] Create `CategoryFilter` (Tag-based)
+- [ ] Wire URL params with useSearchParams/useRouter
+- [ ] Filter products in queryFn
+
+### Phase 6: Product Details Page
+- [ ] Create `useProduct` hook
+- [ ] Create SSR page with `generateMetadata`
+- [ ] Create `ProductDetails` client component
+- [ ] Handle loading/error states
+
+### Phase 7: Layout & Polish
+- [ ] Navbar (auth-aware, locale-aware, theme-aware)
+- [ ] Footer
+- [ ] Root layout wrapping providers
+- [ ] Global error boundary
+- [ ] Loading skeleton
+
+### Phase 8: Security, Performance & SEO
+- [ ] httpOnly cookie config verified
+- [ ] Security headers in next.config.ts
+- [ ] next/image optimization
+- [ ] React.memo / useMemo where needed
+- [ ] Dynamic metadata for product pages
+- [ ] RTL testing for all components
+
+### Phase 9: Final QA, README, Git
+- [ ] `npm run lint` — zero errors
+- [ ] `npm run typecheck` — zero errors
+- [ ] `npm run format` — consistent
+- [ ] Test all flows: register → login → browse → search → filter → details
+- [ ] Test RTL in Arabic mode
+- [ ] Test dark/light toggle
+- [ ] Responsive test: 375px, 768px, 1024px, 1440px
+- [ ] Create README.md
+- [ ] Git init + conventional commits
+
+---
+
+## 10. New Dependencies
+
+```json
+{
+  "dependencies": {
+    "next": "^16",
+    "react": "^19",
+    "react-dom": "^19",
+    "antd": "^6",
+    "@ant-design/nextjs-registry": "^1",
+    "@ant-design/icons": "^6",
+    "@reduxjs/toolkit": "^2",
+    "react-redux": "^9",
+    "@tanstack/react-query": "^5",
+    "axios": "^1",
+    "jsonwebtoken": "^9",
+    "next-intl": "^4"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/jsonwebtoken": "^9",
+    "@tailwindcss/postcss": "^4",
+    "tailwindcss": "^4",
+    "eslint": "^9",
+    "eslint-config-next": "^16",
+    "eslint-config-prettier": "^10",
+    "prettier": "^3",
+    "prettier-plugin-tailwindcss": "^0.7",
+    "husky": "^9",
+    "lint-staged": "^16"
+  }
+}
+```
+
+---
+
+## 11. Next Steps
+
+Ready for **Phase 0** → Scaffold project, install deps, configure tooling.
+
+Proceed when you confirm.
