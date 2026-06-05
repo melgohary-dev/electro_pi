@@ -1,19 +1,20 @@
 # Electro Pi Product Store
 
-A production-grade e-commerce product listing app built with Next.js, featuring authentication, infinite scroll, i18n (Arabic/English), RTL support, and dark/light mode.
+A production-grade e-commerce product listing app built with Next.js, featuring authentication, infinite scroll, i18n (Arabic/English), full RTL support, dark/light mode, and 4 primary color themes.
 
 ## Tech Stack
 
 - **Framework:** Next.js 16 (App Router)
 - **Language:** TypeScript (strict mode)
 - **UI Library:** Ant Design 6
-- **Styling:** Tailwind CSS v4
-- **State Management:** Redux Toolkit (auth + app state)
+- **State Management:** Redux Toolkit (auth state)
 - **Server State:** TanStack React Query v5
-- **i18n:** next-intl (cookie-based locale, no URL prefix)
+- **i18n:** Custom cookie-based locale (no URL prefix) with Arabic & English translations
+- **Theming:** CSS custom properties + Ant Design ConfigProvider (dark/light algorithm, 4 color themes)
 - **Auth:** JWT in httpOnly cookies via Next.js API Routes
 - **Infinite Scroll:** IntersectionObserver + useInfiniteQuery
 - **API:** FakeStoreAPI (products) + custom auth API
+- **Styling:** Ant Design components + CSS classes in globals.css (no Tailwind, no CSS modules, no inline styles except for dynamic values)
 
 ## Features
 
@@ -22,37 +23,47 @@ A production-grade e-commerce product listing app built with Next.js, featuring 
 - User registration & login with JWT (httpOnly cookies)
 - Product listing with infinite scroll
 - Search by product title (debounced)
-- Category filter (clickable tags)
+- Category filter (clickable tags with icons)
 - Product detail page with SEO metadata
 - Loading skeletons & error states
 
 ### Internationalization
 
 - Arabic (العربية) & English
-- Cookie-based locale (no URL prefix — cleaner URLs)
-- Full RTL support via Ant Design ConfigProvider + Tailwind `rtl:` variants
+- Cookie-based locale (NEXT_LOCALE) — no URL prefix
+- Full RTL support via Ant Design ConfigProvider direction
+- Separate fonts: Inter (English), Noto Naskh Arabic (Arabic)
+- Flag icons for language toggle
 
 ### Theming
 
-- Light & Dark mode
-- Persisted in cookie
-- Ant Design theme algorithm + Tailwind `dark:` class
-- No flash on hydration
+- Light & Dark mode (persisted in cookie)
+- 4 primary color options: Orange, Blue, Emerald, Violet
+- Ant Design theme algorithm + CSS custom properties
+- `data-theme` attribute on `<html>` drives CSS variable overrides
+- `--primary-color` CSS variable updates dynamically (no flash on hydration)
+
+### Responsive Design
+
+- Nav links, auth buttons, color picker, and mode toggle hidden on ≤768px
+- Language flag + hamburger menu shown only on mobile
+- Drawer sidebar with grouped sections (Navigation, Theme, Language, Account)
+- Mobile-optimized auth page padding
 
 ### Performance & Security
 
-- `next/image` with AVIF/WebP, lazy loading
+- Plain `<img>` tags with lazy loading (no next/image)
 - React Query caching (5min stale time)
 - Ant Design package optimization
 - JWT in httpOnly cookie (XSS-safe)
 - Security headers via Next.js config
-- Console removed in production (except errors)
+- CSP headers with WebSocket support for dev HMR
 
 ### Developer Experience
 
-- TypeScript strict + noUncheckedIndexedAccess
-- ESLint (next/core-web-vitals + prettier)
-- Prettier with Tailwind plugin
+- TypeScript strict
+- ESLint (next/core-web-vitals)
+- Prettier
 - Husky + lint-staged pre-commit hooks
 - EditorConfig
 
@@ -104,20 +115,27 @@ src/
 │   ├── product/[id]/       # Product details page (SSR + dynamic metadata)
 │   ├── login/              # Login page
 │   ├── register/           # Register page
-│   ├── layout.tsx          # Root layout (i18n, theme, font)
-│   ├── client-layout.tsx   # Client wrapper (providers, navbar, footer)
-│   └── page.tsx            # Home — product list
+│   ├── layout.tsx          # Root layout (fonts, providers)
+│   ├── client-layout.tsx   # Client wrapper (LanguageProvider, ThemeProvider, ConfigProvider)
+│   ├── page.tsx            # Home — product list with search, filters, infinite scroll
+│   ├── loading.tsx         # Full-page skeleton grid
+│   ├── error.tsx           # Error boundary
+│   ├── global-error.tsx    # Root error boundary (own html/body)
+│   └── globals.css         # All CSS (custom properties, responsive, component classes)
 ├── components/
-│   ├── auth/               # AuthGuard, AuthForm
-│   ├── layout/             # Navbar, Footer, LanguageSwitcher, ThemeSwitcher
+│   ├── auth/               # AuthForm (login/register)
+│   ├── common/             # ErrorFallback
+│   ├── filters/            # SearchBar, CategoryFilter
+│   ├── layout/             # Navbar, Footer, PageLayout
 │   ├── product/            # ProductCard, ProductGrid
-│   ├── providers/          # ReduxProvider, QueryProvider, AntdConfigProvider
-│   └── ui/                 # SearchBar, CategoryFilter, InfiniteScrollObserver, etc.
-├── hooks/                  # useProducts, useProduct, useAuth, useDebounce, useLocale
+│   └── providers/          # ReduxProvider, QueryProvider
+├── hooks/                  # useProducts, useProduct, useAuth, useDebounce, useAppStore, useIntersectionObserver
+├── i18n/                   # en.ts, ar.ts, LanguageContext.tsx
 ├── lib/                    # api-client, fake-store, jwt
-├── store/                  # Redux store + slices (auth, app)
-├── types/                  # TypeScript types
-└── config/                 # Constants
+├── store/                  # Redux store + slices (auth)
+├── theme/                  # ThemeContext (mode, primary color, cookie persistence)
+├── types/                  # TypeScript types (auth, product)
+└── config/                 # Constants (PRODUCTS_PER_PAGE)
 ```
 
 ## API Endpoints
@@ -154,78 +172,6 @@ This project uses Webpack instead of Turbopack for compatibility on all platform
 
 ```bash
 npm run build  # Uses --webpack flag
-```
-
-## Postman Collection
-
-Import the following collection to test the API:
-
-```json
-{
-  "info": {
-    "name": "Electro Pi Store API",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "item": [
-    {
-      "name": "Register",
-      "request": {
-        "method": "POST",
-        "url": "http://localhost:3000/api/auth/register",
-        "body": {
-          "mode": "raw",
-          "raw": "{\"email\":\"user@example.com\",\"password\":\"password123\",\"name\":\"User\"}"
-        }
-      }
-    },
-    {
-      "name": "Login",
-      "request": {
-        "method": "POST",
-        "url": "http://localhost:3000/api/auth/login",
-        "body": {
-          "mode": "raw",
-          "raw": "{\"email\":\"user@example.com\",\"password\":\"password123\"}"
-        }
-      }
-    },
-    {
-      "name": "Get Current User",
-      "request": {
-        "method": "GET",
-        "url": "http://localhost:3000/api/auth/me"
-      }
-    },
-    {
-      "name": "Logout",
-      "request": {
-        "method": "POST",
-        "url": "http://localhost:3000/api/auth/logout"
-      }
-    },
-    {
-      "name": "Get Products",
-      "request": {
-        "method": "GET",
-        "url": "https://fakestoreapi.com/products"
-      }
-    },
-    {
-      "name": "Get Product by ID",
-      "request": {
-        "method": "GET",
-        "url": "https://fakestoreapi.com/products/1"
-      }
-    },
-    {
-      "name": "Get Categories",
-      "request": {
-        "method": "GET",
-        "url": "https://fakestoreapi.com/products/categories"
-      }
-    }
-  ]
-}
 ```
 
 ## License

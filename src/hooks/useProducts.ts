@@ -2,6 +2,10 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { fetchProducts } from "@/lib/fake-store";
 import { PRODUCTS_PER_PAGE } from "@/config/constants";
 
+/**
+ * Fetches products with optional category filter and search query.
+ * Uses infinite query for cursor-based pagination.
+ */
 export function useProducts(category?: string, search?: string) {
   return useInfiniteQuery({
     queryKey: ["products", category, search],

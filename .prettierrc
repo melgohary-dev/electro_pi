@@ -5,6 +5,5 @@
   "printWidth": 90,
   "trailingComma": "all",
   "arrowParens": "always",
-  "endOfLine": "lf",
-  "plugins": ["prettier-plugin-tailwindcss"]
+  "endOfLine": "lf"
 }

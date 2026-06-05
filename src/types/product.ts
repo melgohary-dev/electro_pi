@@ -1,3 +1,4 @@
+/** Product from the Fake Store API. */
 export interface Product {
   id: string;
   title: string;
@@ -11,6 +12,7 @@ export interface Product {
   };
 }
 
+/** Product category with optional localized name. */
 export interface Category {
   slug: string;
   name: string;

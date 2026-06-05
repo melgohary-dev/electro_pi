@@ -21,13 +21,11 @@
     "axios": "^1.17.0",
     "jsonwebtoken": "^9.0.3",
     "next": "16.2.7",
-    "next-intl": "^4.13.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-redux": "^9.3.0"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -38,8 +36,6 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.0.7",
     "prettier": "^3.8.3",
-    "prettier-plugin-tailwindcss": "^0.8.0",
-    "tailwindcss": "^4",
     "typescript": "^5"
   }
 }

@@ -2,9 +2,7 @@
 
 import { Input } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
-import { useTranslations } from "next-intl";
-
-const { Search } = Input;
+import { useTranslation } from "@/i18n/LanguageContext";
 
 interface SearchBarProps {
   value: string;
@@ -12,17 +10,17 @@ interface SearchBarProps {
 }
 
 export function SearchBar({ value, onChange }: SearchBarProps) {
-  const t = useTranslations("product");
+  const { t } = useTranslation();
 
   return (
-    <Search
-      placeholder={t("searchPlaceholder")}
+    <Input
+      placeholder={t("home.searchPlaceholder")}
       prefix={<SearchOutlined />}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       allowClear
-      className="w-full md:w-72"
       size="large"
+      className="search-bar"
     />
   );
 }

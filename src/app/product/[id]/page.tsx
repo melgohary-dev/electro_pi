@@ -1,6 +1,6 @@
 import { fetchProduct } from "@/lib/fake-store";
-import { ProductDetailsClient } from "./product-details-client";
 import type { Metadata } from "next";
+import { ProductDetailsClient } from "./product-details-client";
 
 interface Props {
   params: Promise<{ id: string }>;

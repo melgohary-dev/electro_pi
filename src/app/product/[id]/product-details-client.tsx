@@ -1,88 +1,158 @@
 "use client";
 
-import { Typography, Tag, Divider, Button, Rate } from "antd";
-import { ShoppingCartOutlined, ArrowLeftOutlined } from "@ant-design/icons";
-import Image from "next/image";
+import {
+  Typography,
+  Tag,
+  Divider,
+  Button,
+  Rate,
+  Row,
+  Col,
+  Flex,
+  Breadcrumb,
+  Skeleton,
+  Space,
+  Image,
+  App,
+} from "antd";
+import { ShoppingCartOutlined } from "@ant-design/icons";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
 import { useProduct } from "@/hooks/useProduct";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { ErrorFallback } from "@/components/ui/ErrorFallback";
-import { useAppSelector } from "@/hooks/useAppStore";
+import { ErrorFallback } from "@/components/common/ErrorFallback";
+import { useTranslation } from "@/i18n/LanguageContext";
 
 const { Title, Text, Paragraph } = Typography;
+
+function ProductDetailSkeleton() {
+  return (
+    <Flex vertical gap={24}>
+      <Skeleton.Input active size="small" style={{ width: 240, height: 22 }} />
+      <Row gutter={[32, 24]}>
+        <Col xs={24} md={10}>
+          <div className="product-detail-skeleton-cover" />
+        </Col>
+        <Col xs={24} md={14}>
+          <Flex vertical gap={24}>
+            <Flex vertical gap={12}>
+              <Skeleton.Button
+                active
+                size="small"
+                shape="round"
+                style={{ width: 80, height: 24 }}
+              />
+              <Skeleton.Input active size="small" style={{ width: "80%", height: 24 }} />
+            </Flex>
+            <Flex align="center" gap={16}>
+              <Skeleton.Input active size="small" style={{ width: 120, height: 30 }} />
+              <Flex align="center" gap={6}>
+                {Array.from({ length: 5 }).map((_, j) => (
+                  <Skeleton.Button
+                    key={j}
+                    active
+                    shape="square"
+                    size="small"
+                    style={{ width: 20, height: 20 }}
+                  />
+                ))}
+                <Skeleton.Input active size="small" style={{ width: 60, height: 14 }} />
+              </Flex>
+            </Flex>
+            <Divider />
+            <Flex vertical gap={8}>
+              <Skeleton.Input active size="small" style={{ width: "100%", height: 14 }} />
+              <Skeleton.Input active size="small" style={{ width: "100%", height: 14 }} />
+              <Skeleton.Input active size="small" style={{ width: "60%", height: 14 }} />
+            </Flex>
+            <Skeleton.Button active block size="large" style={{ height: 48 }} />
+          </Flex>
+        </Col>
+      </Row>
+    </Flex>
+  );
+}
 
 interface ProductDetailsClientProps {
   id: string;
 }
 
 export function ProductDetailsClient({ id }: ProductDetailsClientProps) {
-  const t = useTranslations("product");
   const { data: product, isLoading, isError, refetch } = useProduct(id);
-  const locale = useAppSelector((s) => s.app.locale);
+  const { t } = useTranslation();
+  const { message } = App.useApp();
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <ProductDetailSkeleton />;
 
   if (isError || !product) {
-    return <ErrorFallback message={t("error")} onRetry={() => refetch()} />;
+    return (
+      <ErrorFallback message={t("error.failedToLoadProduct")} onRetry={() => refetch()} />
+    );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <Link href="/" className="mb-6 inline-flex items-center gap-2 no-underline">
-        <Button type="link" icon={<ArrowLeftOutlined />} className="p-0">
-          {locale === "ar" ? "العودة للمنتجات" : "Back to products"}
-        </Button>
-      </Link>
+    <Flex vertical gap={24}>
+      <Breadcrumb
+        items={[
+          { title: <Link href="/">{t("product.breadcrumbHome")}</Link> },
+          { title: <Link href="/">{t("product.breadcrumbProducts")}</Link> },
+          { title: <Text>{product.title}</Text> },
+        ]}
+      />
 
-      <div className="flex flex-col gap-8 md:flex-row">
-        <div className="w-full md:w-1/2">
-          <div className="relative aspect-square w-full rounded-lg border bg-white p-8">
-            <Image
-              src={product.image}
-              alt={product.title}
-              fill
-              className="object-contain"
-              sizes="(max-width: 768px) 100vw, 50vw"
-              priority
-            />
-          </div>
-        </div>
+      <Row gutter={[32, 24]}>
+        <Col xs={24} md={10} className="product-detail-image-col">
+          <Image
+            src={product.image}
+            alt={product.title}
+            className="product-detail-image"
+            preview={{ mask: null }}
+          />
+        </Col>
 
-        <div className="w-full space-y-6 md:w-1/2">
-          <div>
-            <Tag color="blue" className="mb-2">
-              {product.category}
-            </Tag>
-            <Title level={2}>{product.title}</Title>
-          </div>
+        <Col xs={24} md={14}>
+          <Flex vertical gap={24}>
+            <Space orientation="vertical" size={12}>
+              <Tag color="orange">{product.category}</Tag>
+              <Title level={2} className="product-detail-title">
+                {product.title}
+              </Title>
+            </Space>
 
-          <div className="flex items-center gap-4">
-            <Title level={2} className="m-0 text-green-600">
-              ${product.price.toFixed(2)}
-            </Title>
-            {product.rating && (
-              <div className="flex items-center gap-2">
-                <Rate disabled value={Math.round(product.rating.rate)} />
-                <Text type="secondary">({product.rating.count} reviews)</Text>
-              </div>
-            )}
-          </div>
+            <Flex align="center" gap={16} wrap="wrap">
+              <Title level={2} className="product-detail-price">
+                ${product.price.toFixed(2)}
+              </Title>
+              {product.rating && (
+                <Flex align="center" gap={6}>
+                  <Rate disabled value={Math.round(product.rating.rate)} />
+                  <Text type="secondary">
+                    {t("product.reviews", { count: product.rating.count })}
+                  </Text>
+                </Flex>
+              )}
+            </Flex>
 
-          <Divider />
+            <Divider className="product-detail-divider" />
 
-          <div>
-            <Text strong>{t("description")}</Text>
-            <Paragraph className="mt-2 text-gray-600 dark:text-gray-400">
-              {product.description}
-            </Paragraph>
-          </div>
+            <Space orientation="vertical" size={8}>
+              <Text strong className="product-detail-desc-label">
+                {t("product.description")}
+              </Text>
+              <Paragraph className="product-detail-desc">{product.description}</Paragraph>
+            </Space>
 
-          <Button type="primary" size="large" icon={<ShoppingCartOutlined />} block>
-            {locale === "ar" ? "أضف إلى السلة" : "Add to Cart"}
-          </Button>
-        </div>
-      </div>
-    </div>
+            <Button
+              type="primary"
+              size="large"
+              icon={<ShoppingCartOutlined />}
+              block
+              className="product-detail-add-btn"
+              onClick={() => message.success(t("product.addedToCart"))}
+            >
+              {t("product.addToCart")}
+            </Button>
+          </Flex>
+        </Col>
+      </Row>
+    </Flex>
   );
 }

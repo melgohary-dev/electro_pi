@@ -1,33 +1,49 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
-import { Layout } from "antd";
-import { AppProvider } from "@/components/providers/AppProvider";
-import { setLocale, setTheme } from "@/store/slices/appSlice";
+import { ConfigProvider, theme, App as AntApp } from "antd";
 import { setUser } from "@/store/slices/authSlice";
 import { useAppDispatch } from "@/hooks/useAppStore";
 import { apiClient } from "@/lib/api-client";
-import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
-import type { Locale, Theme } from "@/config/constants";
+import { LanguageProvider, useLanguage } from "@/i18n/LanguageContext";
+import { ThemeProvider, useTheme, ThemeMode } from "@/theme/ThemeContext";
+import { PageLayout } from "@/components/layout/PageLayout";
 
-const { Content } = Layout;
+function ThemedApp({ children }: { children: ReactNode }) {
+  const { direction, locale } = useLanguage();
+  const { mode, primaryColor } = useTheme();
 
-function InitProvider({
-  locale,
-  theme,
-  children,
-}: {
-  locale: Locale;
-  theme: Theme;
-  children: ReactNode;
-}) {
+  return (
+    <ConfigProvider
+      direction={direction}
+      theme={{
+        algorithm: mode === ThemeMode.DARK ? theme.darkAlgorithm : theme.defaultAlgorithm,
+        token: {
+          colorPrimary: primaryColor,
+          colorPrimaryHover: primaryColor,
+          borderRadius: 8,
+          fontFamily:
+            locale === "ar"
+              ? "var(--font-ar), 'Traditional Arabic', serif"
+              : "var(--font-en), system-ui, -apple-system, sans-serif",
+        },
+        components: {
+          Card: { paddingLG: 16, borderRadiusLG: 12 },
+          Button: { borderRadius: 8, controlHeight: 40 },
+          Input: { borderRadius: 8, controlHeight: 42 },
+          Tag: { borderRadius: 6 },
+        },
+      }}
+    >
+      <AntApp>
+        <PageLayout>{children}</PageLayout>
+      </AntApp>
+    </ConfigProvider>
+  );
+}
+
+export function ClientLayout({ children }: { children: ReactNode }) {
   const dispatch = useAppDispatch();
-
-  useEffect(() => {
-    dispatch(setLocale(locale));
-    dispatch(setTheme(theme));
-  }, [locale, theme, dispatch]);
 
   useEffect(() => {
     apiClient
@@ -36,27 +52,11 @@ function InitProvider({
       .catch(() => dispatch(setUser(null)));
   }, [dispatch]);
 
-  return <>{children}</>;
-}
-
-export function ClientLayout({
-  locale,
-  theme,
-  children,
-}: {
-  locale: Locale;
-  theme: Theme;
-  children: ReactNode;
-}) {
   return (
-    <AppProvider>
-      <InitProvider locale={locale} theme={theme}>
-        <Layout className="min-h-screen">
-          <Navbar />
-          <Content className="flex-1">{children}</Content>
-          <Footer />
-        </Layout>
-      </InitProvider>
-    </AppProvider>
+    <LanguageProvider>
+      <ThemeProvider>
+        <ThemedApp>{children}</ThemedApp>
+      </ThemeProvider>
+    </LanguageProvider>
   );
 }

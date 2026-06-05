@@ -2,6 +2,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Product } from "@/types/product";
 import { fetchProduct } from "@/lib/fake-store";
 
+/**
+ * Fetches a single product by ID.
+ * Shows placeholder data from the product list cache if available (instant navigation).
+ */
 export function useProduct(id: string) {
   const queryClient = useQueryClient();
 

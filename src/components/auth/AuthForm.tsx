@@ -1,21 +1,31 @@
 "use client";
 
-import { Form, Input, Button, Card, Typography, App } from "antd";
-import { MailOutlined, LockOutlined, UserOutlined } from "@ant-design/icons";
+import { Form, Input, Button, Card, Typography, Flex, App } from "antd";
+import {
+  MailOutlined,
+  LockOutlined,
+  UserOutlined,
+  ShoppingCartOutlined,
+} from "@ant-design/icons";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useTranslation } from "@/i18n/LanguageContext";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
+
+export enum AuthMode {
+  LOGIN = "login",
+  REGISTER = "register",
+}
 
 interface AuthFormProps {
-  mode: "login" | "register";
+  mode: AuthMode;
   onSubmit: (values: { email: string; password: string; name?: string }) => Promise<void>;
 }
 
 export function AuthForm({ mode, onSubmit }: AuthFormProps) {
-  const t = useTranslations("auth");
   const { message } = App.useApp();
-  const isLogin = mode === "login";
+  const { t } = useTranslation();
+  const isLogin = mode === AuthMode.LOGIN;
 
   const handleFinish = async (values: {
     email: string;
@@ -25,68 +35,84 @@ export function AuthForm({ mode, onSubmit }: AuthFormProps) {
     try {
       await onSubmit(values);
     } catch {
-      message.error(t("error"));
+      message.error(t("auth.invalidCredentials"));
     }
   };
 
   return (
-    <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <Card className="w-full max-w-md">
-        <Title level={2} className="text-center">
-          {isLogin ? t("loginTitle") : t("registerTitle")}
-        </Title>
-        <Form
-          layout="vertical"
-          onFinish={handleFinish}
-          autoComplete="off"
-          requiredMark={false}
-        >
-          {!isLogin && (
+    <Flex align="center" justify="center" className="auth-page auth-form-wrapper">
+      <Flex vertical className="auth-form-inner">
+        <Flex vertical align="center" gap={16} className="auth-form-header">
+          <div className="auth-form-icon-circle">
+            <ShoppingCartOutlined className="auth-form-icon" />
+          </div>
+          <Flex vertical align="center" gap={4}>
+            <Title level={2} className="auth-form-title">
+              {isLogin ? t("auth.welcomeBack") : t("auth.createAccount")}
+            </Title>
+            <Text type="secondary" className="auth-form-subtitle">
+              {isLogin ? t("auth.signInToContinue") : t("auth.createAccountToStart")}
+            </Text>
+          </Flex>
+        </Flex>
+
+        <Card styles={{ body: { padding: 24 } }}>
+          <Form
+            layout="vertical"
+            onFinish={handleFinish}
+            autoComplete="off"
+            requiredMark={false}
+            size="large"
+          >
+            {!isLogin && (
+              <Form.Item
+                label={<Text strong>{t("auth.name")}</Text>}
+                name="name"
+                rules={[
+                  { required: true, message: t("auth.nameRequired") },
+                  { max: 100 },
+                ]}
+              >
+                <Input prefix={<UserOutlined className="input-prefix-icon" />} />
+              </Form.Item>
+            )}
             <Form.Item
-              label={t("name")}
-              name="name"
+              label={<Text strong>{t("auth.email")}</Text>}
+              name="email"
               rules={[
-                { required: true, message: "Please enter your name" },
-                { max: 100 },
+                { required: true, message: t("auth.emailRequired") },
+                { type: "email", message: t("auth.emailInvalid") },
               ]}
             >
-              <Input prefix={<UserOutlined />} size="large" />
+              <Input prefix={<MailOutlined className="input-prefix-icon" />} />
             </Form.Item>
-          )}
-          <Form.Item
-            label={t("email")}
-            name="email"
-            rules={[
-              { required: true, message: "Please enter your email" },
-              { type: "email", message: "Please enter a valid email" },
-            ]}
-          >
-            <Input prefix={<MailOutlined />} size="large" />
-          </Form.Item>
-          <Form.Item
-            label={t("password")}
-            name="password"
-            rules={[
-              { required: true, message: "Please enter your password" },
-              { min: 6, message: "Password must be at least 6 characters" },
-            ]}
-          >
-            <Input.Password prefix={<LockOutlined />} size="large" />
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit" block size="large">
-              {t("submit")}
-            </Button>
-          </Form.Item>
-        </Form>
-        <div className="text-center">
-          {isLogin ? (
-            <Link href="/register">{t("registerLink")}</Link>
-          ) : (
-            <Link href="/login">{t("loginLink")}</Link>
-          )}
-        </div>
-      </Card>
-    </div>
+            <Form.Item
+              label={<Text strong>{t("auth.password")}</Text>}
+              name="password"
+              rules={[
+                { required: true, message: t("auth.passwordRequired") },
+                { min: 6, message: t("auth.passwordMin") },
+              ]}
+            >
+              <Input.Password prefix={<LockOutlined className="input-prefix-icon" />} />
+            </Form.Item>
+            <Form.Item className="auth-form-submit-item">
+              <Button type="primary" htmlType="submit" block size="large">
+                {t("auth.submit")}
+              </Button>
+            </Form.Item>
+          </Form>
+        </Card>
+
+        <Flex justify="center" className="auth-form-footer">
+          <Text type="secondary">
+            {isLogin ? t("auth.dontHaveAccount") : t("auth.alreadyHaveAccount")}{" "}
+            <Link href={isLogin ? "/register" : "/login"}>
+              {isLogin ? t("auth.createAccountLink") : t("auth.signInLink")}
+            </Link>
+          </Text>
+        </Flex>
+      </Flex>
+    </Flex>
   );
 }

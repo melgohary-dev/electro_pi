@@ -4,6 +4,10 @@ import { useAppDispatch, useAppSelector } from "./useAppStore";
 import { setUser, logout as logoutAction } from "@/store/slices/authSlice";
 import { apiClient } from "@/lib/api-client";
 
+/**
+ * Authentication hook providing login, register, and logout actions.
+ * Auth state is persisted in Redux and synced with httpOnly cookies.
+ */
 export function useAuth() {
   const dispatch = useAppDispatch();
   const router = useRouter();

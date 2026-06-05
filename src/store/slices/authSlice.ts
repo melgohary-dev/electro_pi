@@ -11,6 +11,7 @@ const initialState: AuthState = {
   isLoading: true,
 };
 
+/** Redux slice for authentication state (user, loading). */
 export const authSlice = createSlice({
   name: "auth",
   initialState,

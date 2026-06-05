@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Result } from "antd";
+import { ErrorFallback } from "@/components/common/ErrorFallback";
 
 export default function Error({
   error,
@@ -9,18 +9,5 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  return (
-    <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <Result
-        status="error"
-        title="Something went wrong"
-        subTitle={error.message}
-        extra={
-          <Button type="primary" onClick={reset}>
-            Try again
-          </Button>
-        }
-      />
-    </div>
-  );
+  return <ErrorFallback message={error.message} onRetry={reset} />;
 }
