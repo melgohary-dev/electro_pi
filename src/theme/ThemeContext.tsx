@@ -91,7 +91,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!mounted) return;
     setThemeCookie(mode, primaryColor);
-    document.documentElement.setAttribute("data-theme", mode === ThemeMode.DARK ? "dark" : "light");
+    document.documentElement.setAttribute(
+      "data-theme",
+      mode === ThemeMode.DARK ? "dark" : "light",
+    );
     document.documentElement.style.setProperty("--primary-color", primaryColor);
   }, [mode, primaryColor, mounted]);
 
